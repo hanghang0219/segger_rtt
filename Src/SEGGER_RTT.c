@@ -3,13 +3,13 @@
 *                        The Embedded Experts                        *
 **********************************************************************
 *                                                                    *
-*            (c) 1995 - 2019 SEGGER Microcontroller GmbH             *
+*            (c) 1995 - 2023 SEGGER Microcontroller GmbH             *
 *                                                                    *
 *       www.segger.com     Support: support@segger.com               *
 *                                                                    *
 **********************************************************************
 *                                                                    *
-*       SEGGER RTT * Real Time Transfer for embedded targets         *
+*       SEGGER SystemView * Real-time application analysis           *
 *                                                                    *
 **********************************************************************
 *                                                                    *
@@ -17,7 +17,7 @@
 *                                                                    *
 * SEGGER strongly recommends to not make any changes                 *
 * to or modify the source code of this software in order to stay     *
-* compatible with the RTT protocol and J-Link.                       *
+* compatible with the SystemView and RTT protocol, and J-Link.       *
 *                                                                    *
 * Redistribution and use in source and binary forms, with or         *
 * without modification, are permitted provided that the following    *
@@ -41,12 +41,16 @@
 * DAMAGE.                                                            *
 *                                                                    *
 **********************************************************************
+*                                                                    *
+*       SystemView version: 3.50a                                    *
+*                                                                    *
+**********************************************************************
 ---------------------------END-OF-HEADER------------------------------
 File    : SEGGER_RTT.c
 Purpose : Implementation of SEGGER real-time transfer (RTT) which
           allows real-time communication on targets which support
           debugger memory accesses while the CPU is running.
-Revision: $Rev: 29668 $
+Revision: $Rev: 28168 $
 
 Additional information:
           Type "int" is assumed to be 32-bits in size
@@ -164,17 +168,17 @@ Additional information:
 #endif
 
 #ifndef   MIN
-  #define MIN(a, b)                                       (((a) < (b)) ? (a) : (b))
+  #define MIN(a, b)         (((a) < (b)) ? (a) : (b))
 #endif
 
 #ifndef   MAX
-  #define MAX(a, b)                                       (((a) > (b)) ? (a) : (b))
+  #define MAX(a, b)         (((a) > (b)) ? (a) : (b))
 #endif
 //
 // For some environments, NULL may not be defined until certain headers are included
 //
 #ifndef NULL
-  #define NULL                                            0
+  #define NULL 0
 #endif
 
 /*********************************************************************
@@ -250,7 +254,7 @@ Additional information:
 **********************************************************************
 */
 
-static const unsigned char _aTerminalId[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+static unsigned char _aTerminalId[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 /*********************************************************************
 *
@@ -298,19 +302,18 @@ static unsigned char _ActiveTerminal;
 *
 *  Function description
 *    Initializes the control block an buffers.
+*    May only be called via INIT() to avoid overriding settings.
 *
-*  Notes
-*    (1) May only be called via INIT() to avoid overriding settings.
-*        The only exception is SEGGER_RTT_Init(), to make an intentional override possible.
 */
-  #define INIT()                                                                             \
-    do {                                                                                     \
-      volatile SEGGER_RTT_CB* pRTTCBInit;                                                    \
-      pRTTCBInit = (volatile SEGGER_RTT_CB*)((char*)&_SEGGER_RTT + SEGGER_RTT_UNCACHED_OFF); \
-      if (pRTTCBInit->acID[0] != 'S') {                                                      \
-        _DoInit();                                                                           \
-      }                                                                                      \
-    } while (0)
+#define INIT()  {                                                                                    \
+                  volatile SEGGER_RTT_CB* pRTTCBInit;                                                \
+                  pRTTCBInit = (volatile SEGGER_RTT_CB*)((char*)&_SEGGER_RTT + SEGGER_RTT_UNCACHED_OFF); \
+                  do {                                                                               \
+                    if (pRTTCBInit->acID[0] == '\0') {                                               \
+                      _DoInit();                                                                     \
+                    }                                                                                \
+                  } while (0);                                                                       \
+                }
 
 static void _DoInit(void) {
   volatile SEGGER_RTT_CB* p;   // Volatile to make sure that compiler cannot change the order of accesses to the control block
